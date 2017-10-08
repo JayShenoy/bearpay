@@ -5,6 +5,8 @@ class Customer(Document):
 	email = EmailField(required=True)
 	account_id = StringField(required=True)
 	contacts = DictField()
+	transfer_messages = ListField()
+	password = StringField()
 
 class PendingTransfer(Document):
 	sender_account = StringField(required=True)

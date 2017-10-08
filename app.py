@@ -17,13 +17,38 @@ sp = SparkPost(SPARKPOST_API_KEY)
 
 @app.route('/')
 def home():
-	return 'Welcome to Bear Pay'
+	return 'Welcome to Bear Pay!'
+
+@app.route('/customer/<customer_id>')
+def customer_page(customer_id):
+	customer = Customer.objects(customer_id=customer_id).first()
+	
+	if customer is not None:
+		# Get customer name
+		url = 'http://api.reimaginebanking.com/customers/{0}?key={1}'.format(customer_id, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		name = '{0} {1}'.format(response_body['first_name'], response_body['last_name'])
+
+		# Get account balance
+		url = 'http://api.reimaginebanking.com/accounts/{0}?key={1}'.format(customer.account_id, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		balance = response_body['balance']
+
+		return render_template('index.html', transfers=customer.transfer_messages, name=name, balance=balance)
+	else:
+		return 'No customer with this ID'
 
 @app.route('/email-transfer', methods=['POST'])
 @cross_origin()
 def email_transfer():
-	sender_id, amount, recipient_name = request.json['sender_id'], request.json['amount'], request.json['recipient_name']
-	sender = Customer.objects(customer_id=sender_id).first()
+	password, amount, recipient_name = request.json['password'], request.json['amount'], request.json['recipient_name']
+	sender = Customer.objects(password=password).first()
+
+	if sender is None:
+		return 'The password you provided is invalid'
+
 	recipient = sender.contacts[recipient_name]
 
 	pending_transfer = PendingTransfer()
@@ -38,7 +63,6 @@ def email_transfer():
 	url = 'http://api.reimaginebanking.com/customers/{0}?key={1}'.format(sender.customer_id, C1_API_KEY)
 	response = requests.get(url)
 	response_body = json.loads(response.content)
-
 
 	if response.status_code == 200:
 		full_name = '{0} {1}'.format(response_body['first_name'], response_body['last_name'])
@@ -84,8 +108,36 @@ def transfer_money(transfer_id):
 		)
 
 	if response.status_code == 201:
+		# Get information about sender
+		url = 'http://api.reimaginebanking.com/accounts/{0}?key={1}'.format(transfer.sender_account, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		sender_customer_id = response_body['customer_id']
+		url = 'http://api.reimaginebanking.com/customers/{0}?key={1}'.format(sender_customer_id, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		sender_name = '{0} {1}'.format(response_body['first_name'], response_body['last_name'])
+		sender = Customer.objects(customer_id=sender_customer_id).first()
+
+		# Get information about recipient
+		url = 'http://api.reimaginebanking.com/accounts/{0}?key={1}'.format(transfer.recipient_account, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		recipient_customer_id = response_body['customer_id']
+		url = 'http://api.reimaginebanking.com/customers/{0}?key={1}'.format(recipient_customer_id, C1_API_KEY)
+		response = requests.get(url)
+		response_body = json.loads(response.content)
+		recipient_name = '{0} {1}'.format(response_body['first_name'], response_body['last_name'])
+		recipient = Customer.objects(customer_id=recipient_customer_id).first()
+
+		# Add message about transaction to customer logs
+		sender.transfer_messages.insert(0, 'To {0}: ${1}'.format(recipient_name, transfer.amount))
+		recipient.transfer_messages.insert(0, 'From {0}: ${1}'.format(sender_name, transfer.amount))
+		sender.save()
+		recipient.save()
+
 		transfer.delete()
-		return 'Transferred money'
+		return redirect(url_for('customer_page', customer_id=recipient_customer_id, new=1))
 	else:
 		return 'Failed to transfer money'
 
