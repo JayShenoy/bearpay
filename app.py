@@ -44,18 +44,27 @@ def customer_page(customer_id):
 @cross_origin()
 def email_transfer():
 	password, amount, recipient_name = request.json['password'], request.json['amount'], request.json['recipient_name']
+	print('Password: {0}'.format(password))
+	print('Amount: {0}'.format(amount))
+	print('Recipient Name: {0}'.format(recipient_name))
 	sender = Customer.objects(password=password).first()
 
 	if sender is None:
 		return json.dumps('The password you provided is invalid')
 
+	print('Valid password')
+
 	recipient = sender.contacts[recipient_name]
+
+	print('Recipient in sender\'s contacts')
 
 	pending_transfer = PendingTransfer()
 	pending_transfer.sender_account = sender.account_id
 	pending_transfer.amount = amount
 	pending_transfer.recipient_account = recipient.account_id
 	pending_transfer.save()
+
+	print('saved pending transfer')
 
 	transfer_id = str(pending_transfer.id)
 
