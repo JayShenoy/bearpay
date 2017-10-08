@@ -44,12 +44,12 @@ def customer_page(customer_id):
 @cross_origin()
 def email_transfer():
 	password, amount, recipient_name = request.json['password'], request.json['amount'], request.json['recipient_name']
-	sender = Customer.objects(password=password.lower()).first()
+	sender = Customer.objects(password=password).first()
 
 	if sender is None:
 		return json.dumps('The password you provided is invalid')
 
-	recipient = sender.contacts[recipient_name.lower()]
+	recipient = sender.contacts[recipient_name]
 
 	pending_transfer = PendingTransfer()
 	pending_transfer.sender_account = sender.account_id
