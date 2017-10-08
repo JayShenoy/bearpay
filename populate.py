@@ -11,7 +11,7 @@ jay = Customer()
 jay.customer_id = '59d93f88ceb8abe24251c0d9'
 jay.email = 'jayrshenoy@gmail.com'
 jay.account_id = '59d94134ceb8abe24251c0dd'
-jay.password = 'new york'
+jay.password = 'edison'
 jay.save()
 
 drew = Customer()
