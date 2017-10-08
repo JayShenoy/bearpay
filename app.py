@@ -43,8 +43,11 @@ def customer_page(customer_id):
 @app.route('/email-transfer', methods=['POST'])
 @cross_origin()
 def email_transfer():
+	print('Called email transfer function')
 	password, amount, recipient_name = request.json['password'], request.json['amount'], request.json['recipient_name']
+	print('extracted info from json')
 	sender = Customer.objects(password=password).first()
+	print('found customer object')
 
 	if sender is None:
 		return 'The password you provided is invalid'
@@ -56,6 +59,8 @@ def email_transfer():
 	pending_transfer.amount = amount
 	pending_transfer.recipient_account = recipient.account_id
 	pending_transfer.save()
+
+	print('saved pending transfer to database')
 
 	transfer_id = str(pending_transfer.id)
 
